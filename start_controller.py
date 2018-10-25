@@ -3,6 +3,7 @@ import cv2
 import tensorflow as tf
 import datetime
 import argparse
+import pyautogui
 
 detection_graph, sess = detector_utils.load_inference_graph()
 
@@ -65,6 +66,12 @@ if __name__ == '__main__':
 
     cv2.namedWindow('Single-Threaded Detection', cv2.WINDOW_NORMAL)
 
+    gas_percent = 0
+    brake_percent = 0
+    steering_slope = 0
+
+    brake_hand = [0,0,0,0]
+    gas_hand = [1,1,1,1]
     while True:
         # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
         ret, image_np = cap.read()
@@ -85,29 +92,37 @@ if __name__ == '__main__':
         valid_boxes = [boxes[i] for i in range(len(boxes)) if scores[i] > args.score_thresh]
 
         # update controller values
-        gas_hand = [0,0,0,0]
-        brake_hand = [0,0,0,0]
         if len(valid_boxes) >= 2:
             for i in range(2):
-                (left, top, right, bottom) = (valid_boxes[i][1] * im_width, valid_boxes[i][0] * im_height,
+                left, top, right, bottom = (valid_boxes[i][1] * im_width, valid_boxes[i][0] * im_height,
                                             valid_boxes[i][3] * im_width, valid_boxes[i][2] * im_height)
 
                 centroid = get_centroid_of_box((left, top, right, bottom))
 
                 if centroid[0] < im_width/2: # left
                     # brake
-                    brake_hand = (left, top, right, bottom)
+                    brake_percent = (right-left) - (bottom-top)
+                    brake_hand = [left, top, right, bottom]
                 else: # right
                     #gas
-                    gas_hand = (left, top, right, bottom)
+                    gas_percent = (right-left) - (bottom-top)
+                    gas_hand = [left, top, right, bottom]
 
                 cv2.rectangle(image_np, (int(left), int(top)), (int(right), int(bottom)), (77, 255, 9), 3, 1)
 
-        gas_percent = abs(1-(gas_hand[1]-gas_hand[3])/(im_height/2))
-        brake_percent = abs(1-(brake_hand[1]-gas_hand[3])/(im_height/2))
-        steering_percent = (get_centroid_of_box(gas_hand)[1] - get_centroid_of_box(gas_hand)[1])/im_height
+        steering_slope = (get_centroid_of_box(brake_hand)[1] - get_centroid_of_box(gas_hand)[1]) / (get_centroid_of_box(brake_hand)[0] - get_centroid_of_box(gas_hand)[0])
 
-        print("Gas Percent:", gas_percent, "Brake Percent:", brake_percent, "Steering Percent:", steering_percent)
+        print("Gas Percent:", gas_percent, "Brake Percent:", brake_percent, "Steering Slope:", steering_slope)
+
+        if gas_percent > 0:
+            pyautogui.press('w')
+        elif brake_percent > 0:
+            pyautogui.press('s')
+
+        if steering_slope < 0:
+            pyautogui.press('d')
+        elif steering_slope > 0:
+            pyautogui.press('a')
 
         # Calculate Frames per second (FPS)
         num_frames += 1
