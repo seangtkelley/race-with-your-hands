@@ -106,11 +106,11 @@ if __name__ == '__main__':
 
                 if centroid[0] < im_width/2: # left
                     # gas
-                    gas_percent = (bottom-top) / im_height
+                    gas_percent = 1 - ((bottom-top) / im_height)
                     gas_hand = [left, top, right, bottom]
                 else: # right
                     # brake
-                    brake_percent = (bottom-top) / im_height
+                    brake_percent = 1 - ((bottom-top) / im_height)
                     brake_hand = [left, top, right, bottom]
 
                 cv2.rectangle(image_np, (int(left), int(top)), (int(right), int(bottom)), (77, 255, 9), 3, 1)
