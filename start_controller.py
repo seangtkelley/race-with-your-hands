@@ -1,11 +1,16 @@
-from handtracking.utils import detector_utils as detector_utils
 import cv2
-import tensorflow as tf
 import datetime
 import argparse
-import pyautogui
+
+from handtracking.utils import detector_utils as detector_utils
+from pyvjoy.vjoydevice import *
 
 detection_graph, sess = detector_utils.load_inference_graph()
+
+MAX_VJOY = 32767
+MAX_STEERING_SLOPE = 1000
+
+j = VJoyDevice(1)
 
 def get_centroid_of_box(box):
     return box[0]+(box[2]-box[0])/2, box[1]+(box[3]-box[1])/2
@@ -101,11 +106,11 @@ if __name__ == '__main__':
 
                 if centroid[0] < im_width/2: # left
                     # brake
-                    brake_percent = (right-left) - (bottom-top)
+                    brake_percent = (bottom-top) / im_height
                     brake_hand = [left, top, right, bottom]
                 else: # right
                     #gas
-                    gas_percent = (right-left) - (bottom-top)
+                    gas_percent = (bottom-top) / im_height
                     gas_hand = [left, top, right, bottom]
 
                 cv2.rectangle(image_np, (int(left), int(top)), (int(right), int(bottom)), (77, 255, 9), 3, 1)
@@ -114,15 +119,11 @@ if __name__ == '__main__':
 
         print("Gas Percent:", gas_percent, "Brake Percent:", brake_percent, "Steering Slope:", steering_slope)
 
-        if gas_percent > 0:
-            pyautogui.press('w')
-        elif brake_percent > 0:
-            pyautogui.press('s')
+        # update controller values
+        j.data.wThrottle = int(gas_percent * MAX_VJOY)
+        j.data.wWheel = int((steering_slope/MAX_STEERING_SLOPE) * MAX_VJOY)
 
-        if steering_slope < 0:
-            pyautogui.press('d')
-        elif steering_slope > 0:
-            pyautogui.press('a')
+        j.update()
 
         # Calculate Frames per second (FPS)
         num_frames += 1
