@@ -1,0 +1,6 @@
+[submodule "handtracking"]
+	path = handtracking
+	url = https://github.com/victordibia/handtracking
+[submodule "pyvjoy"]
+	path = pyvjoy
+	url = https://github.com/tidzo/pyvjoy
